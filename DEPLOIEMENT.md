@@ -102,19 +102,29 @@ sudo systemctl enable --now edocperso-sync.timer
 
 ## 6. Alternative : Docker Compose
 
-Les fichiers `Dockerfile`, `docker-compose.yml`, `entrypoint.sh`, `.env.example`
-et `requirements.txt` fournis permettent de faire tourner la synchro en
-conteneur, avec cron integre (pas besoin de cron sur l'hote).
+`docker-compose.yml` pointe vers l'image publiee automatiquement sur GitHub
+Container Registry (`ghcr.io/fspms/edocperso-paperless-sync:latest`, voir
+section 7) : pas besoin de builder quoi que ce soit localement.
 
 ```bash
 cp .env.example .env
 # remplir .env (identifiants edocperso + token Paperless)
 
-docker compose up -d --build
+docker compose up -d
 docker compose logs -f      # suit la synchro (une premiere execution
                              # a lieu immediatement au demarrage, puis
                              # selon CRON_SCHEDULE, defaut 06:05/jour)
 ```
+
+Pour mettre a jour vers la derniere image publiee :
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Si vous preferez builder l'image vous-meme (ex: fork modifie), editez
+`docker-compose.yml` : commentez la ligne `image:` et decommentez `build: .`.
 
 Points a connaitre :
 
@@ -128,14 +138,31 @@ Points a connaitre :
   double a la prochaine synchro.
 - Le dossier `./logs` contient l'historique des executions, lisible sans
   passer par `docker logs`.
-- Le conteneur doit pouvoir joindre `edocperso.fr`, `v2-app.edocperso.fr` et
-  votre `PAPERLESS_URL` : verifiez que le reseau Docker/hote n'a pas de
-  proxy/allowlist qui bloquerait ces domaines.
+- Le conteneur doit pouvoir joindre `edocperso.fr` et votre `PAPERLESS_URL` :
+  verifiez que le reseau Docker/hote n'a pas de proxy/allowlist qui
+  bloquerait ces domaines.
 - Si Paperless-ngx tourne lui aussi en Docker Compose sur la meme machine,
   vous pouvez rejoindre son reseau Docker et utiliser le nom du service
   (ex: `PAPERLESS_URL=http://webserver:8000`) plutot que l'URL publique.
 
-## 7. Limites connues
+## 7. Publication automatique de l'image (CI/CD)
+
+Le workflow `.github/workflows/docker-publish.yml` construit et publie
+l'image (`linux/amd64` + `linux/arm64`) sur GitHub Container Registry a
+chaque push sur `main`. Rien a configurer : le `GITHUB_TOKEN` fourni
+automatiquement par Actions suffit pour publier sur `ghcr.io`.
+
+**Premiere publication uniquement** : le paquet est cree prive par defaut.
+Rendez-le public pour que `docker compose pull` fonctionne sans
+authentification : sur GitHub, onglet **Packages** du depot (ou de votre
+profil) > le paquet `edocperso-paperless-sync` > **Package settings** >
+**Change visibility** > **Public**.
+
+Vous pouvez aussi publier une version taguee en poussant un tag git
+`vX.Y.Z` (ex: `git tag v1.0.0 && git push origin v1.0.0`) : l'image sera
+alors aussi disponible sous ce tag en plus de `latest`.
+
+## 8. Limites connues
 
 - API non officielle : eDocPerso peut la modifier ou la bloquer sans preavis.
 - Pas de gestion 2FA/captcha : si votre compte a une double authentification

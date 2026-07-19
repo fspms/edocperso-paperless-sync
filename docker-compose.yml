@@ -1,6 +1,9 @@
 services:
   edocperso-sync:
-    build: .
+    image: ghcr.io/fspms/edocperso-paperless-sync:latest
+    # Pour builder l'image vous-meme au lieu de la telecharger, commentez la
+    # ligne "image" ci-dessus et decommentez celle-ci :
+    # build: .
     container_name: edocperso-sync
     restart: unless-stopped
     env_file:

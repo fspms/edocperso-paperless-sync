@@ -20,13 +20,19 @@ decrite dans la discussion d'origine, qui a ete depreciee).
 
 ## Demarrage rapide
 
+L'image est publiee automatiquement sur GitHub Container Registry a chaque
+modification du depot : pas besoin de builder quoi que ce soit localement.
+
 ```bash
 cp .env.example .env
 # renseigner .env : identifiants eDocPerso + URL/token Paperless-ngx
 
-docker compose up -d --build
+docker compose up -d
 docker compose logs -f
 ```
+
+`docker compose pull && docker compose up -d` recupere la derniere version de
+l'image publiee.
 
 Voir [DEPLOIEMENT.md](DEPLOIEMENT.md) pour le detail (obtention du token API
 Paperless-ngx, planification cron, alternative systemd, etc.).
@@ -45,6 +51,20 @@ voir [.env.example](.env.example)) :
 | `EDOCPERSO_TAG` | Tag applique aux documents importes (defaut: `edocperso`) |
 | `CRON_SCHEDULE` | Expression cron (defaut: `5 6 * * *`, tous les jours a 6h05) |
 | `RUN_ON_START` | Lance une synchro immediate au demarrage du conteneur (defaut: `true`) |
+
+## Publication automatique de l'image
+
+Le workflow [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
+construit et publie l'image (`linux/amd64` + `linux/arm64`) sur
+`ghcr.io/fspms/edocperso-paperless-sync` a chaque push sur `main`, taggee
+`latest` (et aussi par SHA de commit / version semver si vous poussez un tag
+`vX.Y.Z`). Aucun secret a configurer : GitHub fournit automatiquement le
+jeton necessaire.
+
+**Premiere publication uniquement** : le paquet est cree prive par defaut.
+Pour que d'autres puissent le telecharger sans authentification, allez sur
+la page du paquet (onglet *Packages* du profil ou du depot) > *Package
+settings* > *Change visibility* > *Public*.
 
 ## Limites connues
 
