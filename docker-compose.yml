@@ -1,0 +1,20 @@
+services:
+  edocperso-sync:
+    build: .
+    container_name: edocperso-sync
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Format cron standard : minute heure jour mois jour_semaine
+      # Defaut : tous les jours a 06:05. Modifiable ici ou dans .env.
+      CRON_SCHEDULE: "5 6 * * *"
+      # Lance une synchro immediate au demarrage du conteneur (en plus du cron)
+      RUN_ON_START: "true"
+      TZ: "Europe/Paris"
+    volumes:
+      # Etat de dedoublonnage (IDs deja importes) : NE PAS supprimer entre deux
+      # deploiements sinon tous les documents seront reimportes.
+      - ./data:/data
+      # Logs de synchro consultables sans "docker logs"
+      - ./logs:/var/log/edocperso
