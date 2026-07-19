@@ -20,19 +20,65 @@ decrite dans la discussion d'origine, qui a ete depreciee).
 
 ## Demarrage rapide
 
-L'image est publiee automatiquement sur GitHub Container Registry a chaque
-modification du depot : pas besoin de builder quoi que ce soit localement.
+L'image est prete a l'emploi sur `ghcr.io/fspms/edocperso-paperless-sync`,
+pas besoin de builder quoi que ce soit localement.
+
+Commencez par recuperer un fichier `.env` (identifiants eDocPerso + URL/token
+Paperless-ngx) :
 
 ```bash
 cp .env.example .env
-# renseigner .env : identifiants eDocPerso + URL/token Paperless-ngx
+# renseigner .env
+```
 
+### Option A — Docker Compose
+
+```yaml
+services:
+  edocperso-sync:
+    image: ghcr.io/fspms/edocperso-paperless-sync:latest
+    container_name: edocperso-sync
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Format cron standard : minute heure jour mois jour_semaine
+      # Defaut : tous les jours a 06:05. Modifiable ici ou dans .env.
+      CRON_SCHEDULE: "5 6 * * *"
+      # Lance une synchro immediate au demarrage du conteneur (en plus du cron)
+      RUN_ON_START: "true"
+      TZ: "Europe/Paris"
+    volumes:
+      # Etat de dedoublonnage (IDs deja importes) : NE PAS supprimer entre
+      # deux deploiements sinon tous les documents seront reimportes.
+      - ./data:/data
+      # Logs de synchro consultables sans "docker logs"
+      - ./logs:/var/log/edocperso
+```
+
+```bash
 docker compose up -d
 docker compose logs -f
 ```
 
-`docker compose pull && docker compose up -d` recupere la derniere version de
-l'image publiee.
+### Option B — `docker run`
+
+```bash
+docker run -d \
+  --name edocperso-sync \
+  --restart unless-stopped \
+  --env-file .env \
+  -e CRON_SCHEDULE="5 6 * * *" \
+  -e RUN_ON_START="true" \
+  -e TZ="Europe/Paris" \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/logs:/var/log/edocperso" \
+  ghcr.io/fspms/edocperso-paperless-sync:latest
+```
+
+Mettre a jour vers la derniere image : `docker compose pull && docker compose up -d`
+(ou `docker pull ghcr.io/fspms/edocperso-paperless-sync:latest` puis recreer le
+conteneur avec `docker run`).
 
 Voir [DEPLOIEMENT.md](DEPLOIEMENT.md) pour le detail (obtention du token API
 Paperless-ngx, planification cron, alternative systemd, etc.).
@@ -51,20 +97,6 @@ voir [.env.example](.env.example)) :
 | `EDOCPERSO_TAG` | Tag applique aux documents importes (defaut: `edocperso`) |
 | `CRON_SCHEDULE` | Expression cron (defaut: `5 6 * * *`, tous les jours a 6h05) |
 | `RUN_ON_START` | Lance une synchro immediate au demarrage du conteneur (defaut: `true`) |
-
-## Publication automatique de l'image
-
-Le workflow [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
-construit et publie l'image (`linux/amd64` + `linux/arm64`) sur
-`ghcr.io/fspms/edocperso-paperless-sync` a chaque push sur `main`, taggee
-`latest` (et aussi par SHA de commit / version semver si vous poussez un tag
-`vX.Y.Z`). Aucun secret a configurer : GitHub fournit automatiquement le
-jeton necessaire.
-
-**Premiere publication uniquement** : le paquet est cree prive par defaut.
-Pour que d'autres puissent le telecharger sans authentification, allez sur
-la page du paquet (onglet *Packages* du profil ou du depot) > *Package
-settings* > *Change visibility* > *Public*.
 
 ## Limites connues
 
